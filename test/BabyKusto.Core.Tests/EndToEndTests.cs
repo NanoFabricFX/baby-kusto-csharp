@@ -169,6 +169,27 @@ a:long; b:long
         }
 
         [Fact]
+        public void Summarize_1()
+        {
+            // Arrange
+            string query = @"
+let input = datatable(a:long) [ 1, 2, 3 ];
+input
+| summarize count() by bin(a, 2)
+";
+
+            string expected = @"
+a:long; count_:long
+------------------
+0; 1
+2; 2
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
         public void Summarize_NoByExpressions1()
         {
             // Arrange
@@ -363,6 +384,32 @@ datatable(v:long, include: bool)
 v:long
 ------------------
 13
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void BuiltInAggregates_any_String()
+        {
+            // Arrange
+            string query = @"
+datatable(x:long, val:string)
+[
+    0, 'first',
+    1, 'second',
+    2, 'third',
+    3, 'fourth',
+]
+| summarize any(val) by bin(x, 2)
+";
+
+            string expected = @"
+x:long; any_val:string
+------------------
+0; first
+2; third
 ";
 
             // Act & Assert
@@ -578,6 +625,75 @@ v:real
         }
 
         [Fact]
+        public void Union_DifferentAndNonMatchingSchemas1()
+        {
+            // Arrange
+            string query = @"
+union
+    (datatable(v1:real) [ 1, 2 ]),
+    (datatable(v2:real) [ 3, 4 ])
+";
+
+            string expected = @"
+v1:real; v2:real
+------------------
+1; (null)
+2; (null)
+(null); 3
+(null); 4
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact(Skip = "Not supported yet, waiting for https://github.com/microsoft/Kusto-Query-Language/issues/65")]
+        public void Union_DifferentAndNonMatchingSchemas2()
+        {
+            // Arrange
+            string query = @"
+union
+    (datatable(v:real) [ 1, 2 ]),
+    (datatable(v:long) [ 3, 4 ])
+";
+
+            string expected = @"
+v_real:real; v_long:real
+------------------
+1; (null)
+2; (null)
+(null); 3
+(null); 4
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Union_DifferentButMatchingSchemas()
+        {
+            // Arrange
+            string query = @"
+union
+    (datatable(v:real) [ 1, 2 ]),
+    (datatable(v:real) [ 3, 4 ])
+";
+
+            string expected = @"
+v:real
+------------------
+1
+2
+3
+4
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
         public void BuiltIns_minof_Scalar()
         {
             // Arrange
@@ -731,6 +847,45 @@ b-456
         }
 
         [Fact]
+        public void BuiltIns_replace_string_Scalar1()
+        {
+            // Arrange
+            string query = @"
+print v=replace_string('abcb', 'b', '1')
+";
+
+            string expected = @"
+v:string
+------------------
+a1c1
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void BuiltIns_replace_string_Columnar()
+        {
+            // Arrange
+            string query = @"
+datatable(a:string) [ 'abc', 'abcb', 'def' ]
+| project v = replace_string(a, 'b', '1')
+";
+
+            string expected = @"
+v:string
+------------------
+a1c
+a1c1
+def
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
         public void BuiltIns_strlen_Scalar()
         {
             // Arrange
@@ -825,6 +980,82 @@ v:string
         }
 
         [Fact]
+        public void BuiltIns_url_encode_component_Scalar1()
+        {
+            // Arrange
+            string query = @"
+print v=url_encode_component('hello world')
+";
+
+            string expected = @"
+v:string
+------------------
+hello%20world
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void BuiltIns_url_encode_component_Columnar()
+        {
+            // Arrange
+            string query = @"
+datatable(a:string) [ 'hello world', 'https://example.com?a=b' ]
+| project v = url_encode_component(a)
+";
+
+            string expected = @"
+v:string
+------------------
+hello%20world
+https%3A%2F%2Fexample.com%3Fa%3Db
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void BuiltIns_url_decode_Scalar1()
+        {
+            // Arrange
+            string query = @"
+print v=url_decode('hello%20world')
+";
+
+            string expected = @"
+v:string
+------------------
+hello world
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void BuiltIns_url_decode_Columnar()
+        {
+            // Arrange
+            string query = @"
+datatable(a:string) [ 'hello%20world', 'https%3A%2F%2Fexample.com%3Fa%3Db' ]
+| project v = url_decode(a)
+";
+
+            string expected = @"
+v:string
+------------------
+hello world
+https://example.com?a=b
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
         public void BuiltIns_bin_Long()
         {
             // Arrange
@@ -856,6 +1087,53 @@ v1:long; v2:long
         }
 
         [Fact]
+        public void BuiltIns_bin_Real()
+        {
+            // Arrange
+            string query = @"
+datatable(a:real, b:real)
+[
+  -1, 3,
+   0, 3,
+   1, 3,
+   2, 3,
+   3, 3,
+   4, 3,
+   0.3, 0.5,
+   0.5, 0.5,
+   0.9, 0.5,
+   1.0, 0.5,
+   1.1, 0.5,
+   -0.1, 0.5,
+   -0.5, 0.5,
+   -0.6, 0.5,
+]
+| project v1 = bin(a, b), v2 = floor(a, b)";
+
+            string expected = @"
+v1:real; v2:real
+------------------
+-3; -3
+0; 0
+0; 0
+0; 0
+3; 3
+3; 3
+0; 0
+0.5; 0.5
+0.5; 0.5
+1; 1
+1; 1
+-0.5; -0.5
+-0.5; -0.5
+-1; -1
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
         public void BuiltIns_bin_DateTime()
         {
             // Arrange
@@ -872,7 +1150,7 @@ v:datetime
             Test(query, expected);
         }
 
-        [Fact(Skip = "See: https://github.com/microsoft/Kusto-Query-Language/issues/67")]
+        [Fact]
         public void BuiltIns_bin_Narrowing()
         {
             // Arrange
@@ -1486,7 +1764,7 @@ False; True
             Test(query, expected);
         }
 
-        [Fact(Skip = "Kusto library bug, see: https://github.com/microsoft/Kusto-Query-Language/issues/66")]
+        [Fact]
         public void BinOp_StringEndsWithCs()
         {
             // Arrange
@@ -1648,6 +1926,24 @@ a:long
         }
 
         [Fact]
+        public void Cast_ToLong_Real_Scalar()
+        {
+            // Arrange
+            string query = @"
+print a=tolong(123.5)
+";
+
+            string expected = @"
+a:long
+------------------
+123
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
         public void Cast_ToDouble_String_Scalar()
         {
             // Arrange
@@ -1719,6 +2015,65 @@ a:real
 (null)
 123.5
 NaN
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Iff_Scalar()
+        {
+            // Arrange
+            string query = @"
+print 
+      bool1 = iff(2 > 1, true, false),
+      bool2 = iif(2 < 1, true, false),
+      int1  = iff(2 > 1, int(1), int(2)),
+      int2  = iff(2 < 1, int(1), int(2)),
+      long1 = iff(2 > 1, long(1), long(2)),
+      long2 = iff(2 < 1, long(1), long(2)),
+      real1 = iff(2 > 1, real(1), real(2)),
+      real2 = iff(2 < 1, real(1), real(2)),
+      string1 = iff(2 > 1, 'ifTrue', 'ifFalse'),
+      string2 = iff(2 < 1, 'ifTrue', 'ifFalse'),
+      datetime1 = iff(2 > 1, datetime(2022-01-01), datetime(2022-01-02)),
+      datetime2 = iff(2 < 1, datetime(2022-01-01), datetime(2022-01-02)),
+      timespan1 = iff(2 > 1, 1s, 2s),
+      timespan2 = iff(2 < 1, 1s, 2s)
+";
+
+            string expected = @"
+bool1:bool; bool2:bool; int1:int; int2:int; long1:long; long2:long; real1:real; real2:real; string1:string; string2:string; datetime1:datetime; datetime2:datetime; timespan1:timespan; timespan2:timespan
+------------------
+True; False; 1; 2; 1; 2; 1; 2; ifTrue; ifFalse; 2022-01-01T00:00:00.0000000; 2022-01-02T00:00:00.0000000; 00:00:01; 00:00:02
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Iff_Columnar()
+        {
+            // Arrange
+            string query = @"
+datatable(predicates:bool) [ true, false ]
+| project
+      bool1 = iff(predicates, true, false),
+      int1  = iff(predicates, int(1), int(2)),
+      long1 = iff(predicates, long(1), long(2)),
+      real1 = iff(predicates, real(1), real(2)),
+      string1 = iff(predicates, 'ifTrue', 'ifFalse'),
+      datetime1 = iff(predicates, datetime(2022-01-01), datetime(2022-01-02)),
+      timespan1 = iff(predicates, 1s, 2s)
+";
+
+            string expected = @"
+bool1:bool; int1:int; long1:long; real1:real; string1:string; datetime1:datetime; timespan1:timespan
+------------------
+True; 1; 1; 1; ifTrue; 2022-01-01T00:00:00.0000000; 00:00:01
+False; 2; 2; 2; ifFalse; 2022-01-02T00:00:00.0000000; 00:00:02
 ";
 
             // Act & Assert
@@ -1843,6 +2198,389 @@ cs:int; normalized:real
 ------------------
 10; 0.5
 20; 1
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Join_DefaultJoin()
+        {
+            // Arrange
+            string query = @"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join Y on Key
+| order by Key asc, Value2 asc
+";
+
+            string expected = @"
+Key:string; Value1:long; Key1:string; Value2:long
+------------------
+b; 2; b; 10
+c; 4; c; 20
+c; 4; c; 30
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Join_InnerUniquetJoin()
+        {
+            // Arrange
+            string query = @"
+let t1 = datatable(key:long, value:string)
+[
+    1, 'val1.1',
+    1, 'val1.2'
+];
+let t2 = datatable(key:long, value:string)
+[
+    1, 'val1.3',
+    1, 'val1.4'
+];
+t1 | join kind=innerunique t2 on key
+| order by value1 asc
+";
+
+            string expected = @"
+key:long; value:string; key1:long; value1:string
+------------------
+1; val1.1; 1; val1.3
+1; val1.1; 1; val1.4
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Join_InnerJoin()
+        {
+            // Arrange
+            string query = @"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join kind=inner Y on Key
+| order by Key asc, Value1 asc, Value2 asc
+";
+
+            string expected = @"
+Key:string; Value1:long; Key1:string; Value2:long
+------------------
+b; 2; b; 10
+b; 3; b; 10
+c; 4; c; 20
+c; 4; c; 30
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact(Skip = "$left, $right scopes not properly supported yet")]
+        public void Join_InnerJoin_LeftRightScopesOnClause()
+        {
+            // Arrange
+            string query = @"
+let me = 'baby';
+let A = datatable(a:string, b:string) [
+    'abc', 'aLeft',
+    'def', 'dLeft',
+    'ghi', 'gLeft',
+];
+let B = datatable(a:string, c:string) [
+    'abc', 'aRight',
+    'def', 'dRight',
+    'jkl', 'jRight',
+];
+A | join kind=inner B on $left.a == $right.a
+| order by a asc
+";
+
+            string expected = @"
+a:string; b:string; a1:string; c:string
+------------------
+abc; aLeft; abc; aRight
+def; dLeft; def; dRight
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Join_LeftOuterJoin1()
+        {
+            // Arrange
+            string query = @"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join kind=leftouter Y on Key
+| order by Key asc, Key1 asc
+";
+
+            string expected = @"
+Key:string; Value1:long; Key1:string; Value2:long
+------------------
+a; 1; (null); (null)
+b; 2; b; 10
+b; 3; b; 10
+c; 4; c; 20
+c; 4; c; 30
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Join_RightOuterJoin1()
+        {
+            // Arrange
+            string query = @"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join kind=rightouter Y on Key
+| order by Key asc nulls last, Key1 asc
+";
+
+            string expected = @"
+Key:string; Value1:long; Key1:string; Value2:long
+------------------
+b; 2; b; 10
+b; 3; b; 10
+c; 4; c; 20
+c; 4; c; 30
+(null); (null); d; 40
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Join_FullOuterJoin1()
+        {
+            // Arrange
+            string query = @"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join kind=fullouter Y on Key
+| order by Key asc nulls last, Key1 asc nulls first
+";
+
+            string expected = @"
+Key:string; Value1:long; Key1:string; Value2:long
+------------------
+a; 1; (null); (null)
+b; 2; b; 10
+b; 3; b; 10
+c; 4; c; 20
+c; 4; c; 30
+(null); (null); d; 40
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Join_LeftSemiJoin1()
+        {
+            // Arrange
+            string query = @"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join kind=leftsemi Y on Key
+| order by Key asc
+";
+
+            string expected = @"
+Key:string; Value1:long
+------------------
+b; 2
+b; 3
+c; 4
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Fact]
+        public void Join_RightSemiJoin1()
+        {
+            // Arrange
+            string query = @"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join kind=rightsemi Y on Key
+| order by Key asc
+";
+
+            string expected = @"
+Key:string; Value2:long
+------------------
+b; 10
+c; 20
+c; 30
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Theory]
+        [InlineData("leftanti")]
+        [InlineData("anti")]
+        [InlineData("leftantisemi")]
+        public void Join_LeftAntiJoin1(string kind)
+        {
+            // Arrange
+            string query = $@"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join kind={kind} Y on Key
+";
+
+            string expected = @"
+Key:string; Value1:long
+------------------
+a; 1
+";
+
+            // Act & Assert
+            Test(query, expected);
+        }
+
+        [Theory]
+        [InlineData("rightanti")]
+        [InlineData("rightantisemi")]
+        public void Join_RightAntiJoin1(string kind)
+        {
+            // Arrange
+            string query = $@"
+let X = datatable(Key:string, Value1:long)
+[
+    'a',1,
+    'b',2,
+    'b',3,
+    'c',4
+];
+let Y = datatable(Key:string, Value2:long)
+[
+    'b',10,
+    'c',20,
+    'c',30,
+    'd',40
+];
+X | join kind={kind} Y on Key
+";
+
+            string expected = @"
+Key:string; Value2:long
+------------------
+d; 40
 ";
 
             // Act & Assert

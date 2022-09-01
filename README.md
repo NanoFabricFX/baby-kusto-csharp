@@ -1,4 +1,4 @@
-_⚠ This is a hackathon project with no support or quality guarantee_
+[![NuGet Gallery | BabyKusto.Core](https://img.shields.io/nuget/v/BabyKusto.Core?style=plastic)](https://www.nuget.org/packages/BabyKusto.Core)
 
 # BabyKusto
 
@@ -35,7 +35,7 @@ result.Dump(Console.Out);
 
 This repo ships with three ready-to-run samples that showcase BabyKusto in action.
 
-* [**HelloWorld**](./samples/BabyKusto.HelloWorld): as simple as it gets, shows how to run a self-contained quer similar to the examples above.
+* [**HelloWorld**](./samples/BabyKusto.HelloWorld): as simple as it gets, shows how to run a simple query.
 
 * [**ProcessQuerier**](./samples/BabyKusto.ProcessQuerier): a command-line tool that lets you explore processes running on your machine using KQL. For example, find the process using the most memory with a query like this:
   ```

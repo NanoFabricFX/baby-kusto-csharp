@@ -40,6 +40,8 @@ namespace BabyKusto.Core.Evaluation.BuiltIns
 
             functions.Add(Functions.Strlen, new ScalarFunctionInfo(new ScalarOverloadInfo(new StrlenFunctionImpl(), ScalarTypes.Long, ScalarTypes.String)));
 
+            functions.Add(Functions.ReplaceString, new ScalarFunctionInfo(new ScalarOverloadInfo(new ReplaceStringFunctionImpl(), ScalarTypes.String, ScalarTypes.String, ScalarTypes.String, ScalarTypes.String)));
+
             // TODO: Signature should be `string substring(string, int, int)`. But const literals are evaluated as long's by default and we do not support narrowing at this time.
             functions.Add(
                 Functions.Substring,
@@ -49,9 +51,21 @@ namespace BabyKusto.Core.Evaluation.BuiltIns
             var binFunctionInfo = new ScalarFunctionInfo(
                 new ScalarOverloadInfo(new BinIntFunctionImpl(), ScalarTypes.Int, ScalarTypes.Int, ScalarTypes.Int),
                 new ScalarOverloadInfo(new BinLongFunctionImpl(), ScalarTypes.Long, ScalarTypes.Long, ScalarTypes.Long),
+                new ScalarOverloadInfo(new BinDoubleFunctionImpl(), ScalarTypes.Real, ScalarTypes.Real, ScalarTypes.Real),
                 new ScalarOverloadInfo(new BinDateTimeTimeSpanFunctionImpl(), ScalarTypes.DateTime, ScalarTypes.DateTime, ScalarTypes.TimeSpan));
             functions.Add(Functions.Bin, binFunctionInfo);
             functions.Add(Functions.Floor, binFunctionInfo);
+
+            var iffFunctionInfo = new ScalarFunctionInfo(
+                new ScalarOverloadInfo(new IffBoolFunctionImpl(), ScalarTypes.Bool, ScalarTypes.Bool, ScalarTypes.Bool, ScalarTypes.Bool),
+                new ScalarOverloadInfo(new IffIntFunctionImpl(), ScalarTypes.Int, ScalarTypes.Bool, ScalarTypes.Int, ScalarTypes.Int),
+                new ScalarOverloadInfo(new IffLongFunctionImpl(), ScalarTypes.Long, ScalarTypes.Bool, ScalarTypes.Long, ScalarTypes.Long),
+                new ScalarOverloadInfo(new IffRealFunctionImpl(), ScalarTypes.Real, ScalarTypes.Bool, ScalarTypes.Real, ScalarTypes.Real),
+                new ScalarOverloadInfo(new IffDateTimeFunctionImpl(), ScalarTypes.DateTime, ScalarTypes.Bool, ScalarTypes.DateTime, ScalarTypes.DateTime),
+                new ScalarOverloadInfo(new IffTimeSpanFunctionImpl(), ScalarTypes.TimeSpan, ScalarTypes.Bool, ScalarTypes.TimeSpan, ScalarTypes.TimeSpan),
+                new ScalarOverloadInfo(new IffStringFunctionImpl(), ScalarTypes.String, ScalarTypes.Bool, ScalarTypes.String, ScalarTypes.String));
+            functions.Add(Functions.Iff, iffFunctionInfo);
+            functions.Add(Functions.Iif, iffFunctionInfo);
 
             functions.Add(Functions.ToInt, new ScalarFunctionInfo(new ScalarOverloadInfo(new ToIntStringFunctionImpl(), ScalarTypes.Int, ScalarTypes.String)));
             functions.Add(Functions.ToLong, new ScalarFunctionInfo(new ScalarOverloadInfo(new ToLongStringFunctionImpl(), ScalarTypes.Long, ScalarTypes.String)));
@@ -59,6 +73,9 @@ namespace BabyKusto.Core.Evaluation.BuiltIns
             functions.Add(Functions.ToReal, toDoubleFunctionInfo);
             functions.Add(Functions.ToDouble, toDoubleFunctionInfo);
             functions.Add(Functions.ToBool, new ScalarFunctionInfo(new ScalarOverloadInfo(new ToBoolStringFunctionImpl(), ScalarTypes.Bool, ScalarTypes.String)));
+
+            functions.Add(Functions.UrlEncode_Component, new ScalarFunctionInfo(new ScalarOverloadInfo(new UrlEncodeComponentFunctionImpl(), ScalarTypes.String, ScalarTypes.String)));
+            functions.Add(Functions.UrlDecode, new ScalarFunctionInfo(new ScalarOverloadInfo(new UrlDecodeFunctionImpl(), ScalarTypes.String, ScalarTypes.String)));
         }
 
         public static ScalarOverloadInfo GetOverload(FunctionSymbol symbol, IRExpressionNode[] arguments, List<Parameter> parameters)
